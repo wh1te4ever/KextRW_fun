@@ -63,12 +63,12 @@ uint64_t vtophys_lvl(uint64_t tte_ttep, uint64_t va, uint64_t *leaf_level, uint6
 
 		struct tt_level *lvlp = &arm_tt_level[curLevel];
 		uint64_t tteIndex = (va & lvlp->indexMask) >> lvlp->shift;
-		printf("tteIndex = 0x%llx\n", tteIndex);
+		// printf("tteIndex = 0x%llx\n", tteIndex);
 		uint64_t tteEntry = 0;
 		if (physical) {
 			uint64_t tte_pa = tte_ttep + (tteIndex * sizeof(uint64_t));
 			tteEntry = physread64_via_krw(tte_pa);
-			printf("tte_pa: 0x%llx, tteEntry: 0x%llx\n", tte_pa, tteEntry);
+			// printf("tte_pa: 0x%llx, tteEntry: 0x%llx\n", tte_pa, tteEntry);
 			if (leaf_tte_ttep) *leaf_tte_ttep = tte_pa;
 			if (leaf_level) *leaf_level = curLevel;
 		}
@@ -85,7 +85,7 @@ uint64_t vtophys_lvl(uint64_t tte_ttep, uint64_t va, uint64_t *leaf_level, uint6
 		}
 
 		if ((tteEntry & lvlp->validMask) != lvlp->validMask) {
-			printf("curLevel: 0x%llx, tteEntry: 0x%llx, result: 0x%llx\n", curLevel, tteEntry, (tteEntry & lvlp->validMask));
+			// printf("curLevel: 0x%llx, tteEntry: 0x%llx, result: 0x%llx\n", curLevel, tteEntry, (tteEntry & lvlp->validMask));
 			errno = 1042;
 			return 0;
 		}

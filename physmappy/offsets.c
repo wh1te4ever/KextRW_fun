@@ -23,6 +23,7 @@ uint64_t ksymbols_avm1_24d81[] = {
     0xFFFFFE000776C010, // KSYMBOL_cpu_ttep
     0xFFFFFE0007EB5944, // KSYMBOL_pmap_enter_options_addr
     0xFFFFFE0007EBBAEC, // KSYMBOL_pmap_remove_options
+    // 0xFFFFFE0008FA7300, //KSYMBOL_pmap_remove_options
     0xFFFFFE000776C158, // KSYMBOL_vm_first_phys
     0xFFFFFE00076E1910, // KSYMBOL_pv_head_table
     0xFFFFFE0007EBEE44, // KSYMBOL_pmap_find_pa
@@ -75,7 +76,7 @@ void offsets_init(void) {
 
         off_pt_desc_pmap = 0x10;
         off_pt_desc_va = 0x18;
-        off_pt_desc_ptd_info = off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t));
+        off_pt_desc_ptd_info = off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t)); 
 
         symbols = ksymbols_avm1_24d81;
     }

@@ -363,8 +363,9 @@ uint64_t pmap_self(void)
     uint64_t p_proc_ro = kread64(proc + off_p_proc_ro);
     uint64_t pr_task = kread64(p_proc_ro + off_p_ro_pr_task);
 	uint64_t vmMap = kreadptr(pr_task + off_task_map);
+    uint64_t pmap = kreadptr(vmMap + off_vm_map_pmap);
 	
-	return vmMap;
+	return pmap;
 }
 
 #define atop(x) ((vm_address_t)(x) >> vm_kernel_page_shift)
