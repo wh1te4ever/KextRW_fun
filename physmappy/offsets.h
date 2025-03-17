@@ -16,7 +16,8 @@ enum ksymbol {
   KSYMBOL_pmap_enter_options_addr,
   KSYMBOL_pmap_remove_options,
   KSYMBOL_vm_first_phys,
-  KSYMBOL_pv_head_table
+  KSYMBOL_pv_head_table,
+  KSYMBOL_pmap_find_pa
 };
 
 extern uint32_t off_p_pid;
@@ -29,6 +30,7 @@ extern uint32_t off_vm_map_pmap;
 extern uint32_t off_pmap_ttep;
 extern uint32_t off_pmap_type;
 extern uint32_t off_pt_desc_pmap;
+extern uint32_t off_pt_desc_va;
 extern uint32_t off_pt_desc_ptd_info;
 
 uint64_t ksym(enum ksymbol sym);

@@ -31,6 +31,9 @@ int physrw_handoff(pid_t pid);
 int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size);
 int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size);
 void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end);
+uint64_t pmap_alloc_page_table(uint64_t pmap, uint64_t va);
+uint64_t alloc_page_table_unassigned(void);
+uint64_t pmap_self(void);
 
 uint64_t pa_index(uint64_t pa);
 uint64_t pai_to_pvh(uint64_t pai);

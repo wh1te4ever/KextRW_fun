@@ -29,3 +29,9 @@ uint64_t kfunc_pmap_remove_options(uint64_t pmap, uint64_t start, uint64_t end)
     uint64_t kr = kcall10(ksym(KSYMBOL_pmap_remove_options), (uint64_t []){ pmap, start, end, 0x100 }, 4);
 	return kr;
 }
+
+uint64_t kfunc_pmap_find_pa(uint64_t pmap, uint64_t va)
+{ 
+    uint64_t kr = kcall10(ksym(KSYMBOL_pmap_find_pa), (uint64_t []){ pmap, va }, 2);
+	return kr;
+}

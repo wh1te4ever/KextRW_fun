@@ -45,6 +45,7 @@ int physrw_handoff(pid_t pid)
 	return ret;
 }
 
+#define USE_KCALL 1
 int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size)
 {
 	uint64_t ttep = kread64(pmap + off_pmap_ttep);
@@ -104,13 +105,15 @@ int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size
 		printf("leafLevel: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", leafLevel, uaL2Cur, ttep, errno);
 		uint64_t level2Table = vtophys_lvl(ttep, uaL2Cur, &leafLevel, NULL);
         printf("level2Table: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", level2Table, uaL2Cur, ttep, errno);
-		return -3;
+		sleep(1);
+		// return -3;
 		if (!level2Table) return -2;
 		physwritebuf_via_krw(level2Table, tableToWrite, vm_real_kernel_page_size);
 
         // Reference count of new page table must be 0!
 	    // original ref count is 1 because the table holds one PTE
 	    // Our new PTEs are not part of the pmap layer though so refcount needs to be 0
+#if USE_KCALL
         uint64_t pvh = pai_to_pvh(pa_index(level2Table));
 		uint64_t ptdp = pvh_ptd(pvh);
         printf("ptdp = 0x%llx, off_pt_desc_ptd_info = 0x%x\n", ptdp, off_pt_desc_ptd_info);
@@ -118,7 +121,8 @@ int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size
 		uint16_t pinfo_refCount = kread16(ptdp + off_pt_desc_ptd_info);
         printf("pinfo_refCount = 0x%hx\n", pinfo_refCount);
 
-        kwrite16(ptdp + off_pt_desc_ptd_info, 0);
+        kwrite16(ptdp + off_pt_desc_ptd_info, 0); 
+#endif
 	}
 
 	return 0;
@@ -128,7 +132,8 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 {
 	uint64_t ttep = kread64(pmap + off_pmap_ttep);
 
-    uint64_t unmappedStart = 0, unmappedSize = 0;
+#if USE_KCALL	
+	uint64_t unmappedStart = 0, unmappedSize = 0;
 
 	uint64_t l2Start = vaStart & ~L2_BLOCK_MASK;
 	uint64_t l2End = (vaStart + (size - 1)) & ~L2_BLOCK_MASK;
@@ -155,12 +160,18 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 			// Set type to nested
 			physwrite8_via_krw(kvtophys(pmap + off_pmap_type), 3);
 
+			printf("pmap_remove...?\n");
+			sleep(1);
+
 			// Remove mapping (table will stay cause nested is set)
 			pmap_remove(pmap, unmappedStart, unmappedStart + unmappedSize);
 
+			printf("pmap_remove... done\n");
+			sleep(1);
+
 			// Change type back
 			physwrite8_via_krw(kvtophys(pmap + off_pmap_type), 0);
-			
+
 			unmappedStart = 0;
 			unmappedSize = 0;
 			continue;
@@ -172,26 +183,188 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 			unmappedSize += L2_BLOCK_SIZE;
 		}
 	}
+#else
+    uint64_t vaEnd = vaStart + size;
+	for (uint64_t va = vaStart; va < vaEnd; va += vm_real_kernel_page_size) {
+		uint64_t leafLevel;
+		do {
+			leafLevel = PMAP_TT_L3_LEVEL;
+			uint64_t pt = 0;
+			vtophys_lvl(ttep, va, &leafLevel, &pt);
+			if (leafLevel != PMAP_TT_L3_LEVEL) {
+				uint64_t pt_va = 0;
+				switch (leafLevel) {
+					case PMAP_TT_L1_LEVEL: {
+						pt_va = va & ~L1_BLOCK_MASK;
+						break;
+					}
+					case PMAP_TT_L2_LEVEL: {
+						pt_va = va & ~L2_BLOCK_MASK;
+						break;
+					}
+				}
+				uint64_t newTable = pmap_alloc_page_table(pmap, pt_va);
+				if (newTable) {
+					physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE);
+				}
+				else {
+					return -2;
+				}
+			}
+		} while (leafLevel < PMAP_TT_L3_LEVEL);
+	}
+#endif
+	return 0;
+}
 
-    return 0;
+uint64_t pmap_alloc_page_table(uint64_t pmap, uint64_t va)
+{
+	if (!pmap) {
+		pmap = pmap_self();
+	}
+
+	uint64_t tt_p = alloc_page_table_unassigned();
+	if (!tt_p) return 0;
+
+	uint64_t pvh = pai_to_pvh(pa_index(tt_p));
+	uint64_t ptdp = pvh_ptd(pvh);
+
+	uint64_t ptdp_pa = kvtophys(ptdp);
+
+	// At this point the allocated page table is associated
+	// to the pmap of this process alongside the address it was allocated on
+	// We now need to replace the association with the context in which it will be used
+	physwrite64_via_krw(ptdp_pa + off_pt_desc_pmap, pmap);
+
+	// On A14+ PT_INDEX_MAX is 4, for whatever reason
+	// However in practice, only the first slot is used...
+	for (uint64_t po = 0; po < vm_page_size; po += vm_real_kernel_page_size) {
+		physwrite64_via_krw(ptdp_pa + off_pt_desc_va + (po / vm_page_size), va + po);
+	}
+
+	return tt_p;
 }
 
 void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end)
 {
-    uint64_t remove_count = 0;
-    if (!pmap) {
-        return;
-    }
-    uint64_t va = start;
-    while (va < end) {
-        uint64_t l;
-        l = ((va + L2_BLOCK_SIZE) & ~L2_BLOCK_MASK);
-        if (l > end) {
-            l = end;
-        }
-        remove_count = kfunc_pmap_remove_options(pmap, va, l);
-        va = remove_count;
-    }
+	kfunc_pmap_remove_options(pmap, start, end);
+}
+
+uint64_t alloc_page_table_unassigned(void)
+{
+	uint64_t pmap = pmap_self();
+	uint64_t ttep = kread64(pmap + off_pmap_ttep);
+
+	printf("alloc_page_table_unassigned pmap: 0x%llx, ttep: 0x%llx\n", pmap, ttep);
+
+	sleep(1);
+
+	void *free_lvl2 = NULL;
+	uint64_t tte_lvl2 = 0;
+	uint64_t allocatedPT = 0;
+	uint64_t pinfo_pa = 0;
+	while (1) {
+		// When we allocate the entire address range of an L2 block, we can assume ownership of the backing table
+		if (posix_memalign(&free_lvl2, L2_BLOCK_SIZE, L2_BLOCK_SIZE) != 0) {
+			printf("WARNING: Failed to allocate L2 page table address range\n");
+			return 0;
+		}
+		// Now, fault in one page to make the kernel allocate the page table for it
+		*(volatile uint64_t *)free_lvl2;
+
+		// Find the newly allocated page table
+		uint64_t lvl = PMAP_TT_L2_LEVEL;
+		printf("HUH, free_lvl2 = 0x%llx\n", (uint64_t)free_lvl2);
+		sleep(1);
+		// allocatedPT = vtophys_lvl(ttep, (uint64_t)free_lvl2, &lvl, &tte_lvl2);
+		allocatedPT = kfunc_pmap_find_pa(pmap, (uint64_t)free_lvl2);
+		printf("allocatedPT: 0x%llx\n", allocatedPT);
+		sleep(1);
+
+		uint64_t pvh = pai_to_pvh(pa_index(allocatedPT));
+		printf("pvh: 0x%llx\n", pvh);
+		sleep(1);
+		uint64_t ptdp = pvh_ptd(pvh);
+		printf("ptdp: 0x%llx\n", ptdp);
+		sleep(1);
+		uint64_t pinfo = kread64(ptdp + off_pt_desc_ptd_info);
+		printf("alloc_page_table_unassigned pinfo: 0x%llx\n", pinfo);
+		sleep(1);
+		pinfo_pa = kvtophys(pinfo);
+
+		uint16_t refCount = physread16_via_krw(pinfo_pa);
+		if (refCount != 1) {
+			// Something is off, retry
+			free(free_lvl2);
+			continue;
+		}
+		break;
+	}
+
+	// Handle case where all entries in the level 2 table are 0 after we leak ours
+	// In that case, leak an allocation in the span of it to keep it alive
+	/*uint64_t lvl2Table = tte_lvl2 & ~PAGE_MASK;
+	uint64_t lvl2TableEntries[PAGE_SIZE / sizeof(uint64_t)];
+	physreadbuf(lvl2Table, lvl2TableEntries, PAGE_SIZE);
+	int freeIdx = -1;
+	for (int i = 0; i < (PAGE_SIZE / sizeof(uint64_t)); i++) {
+		uint64_t curPtr = lvl2Table + (sizeof(uint64_t) * i);
+		if (curPtr != tte_lvl2) {
+			if (lvl2TableEntries[i]) {
+				freeIdx = -1;
+				break;
+			}
+			else {
+				freeIdx = i;
+			}
+		}
+	}
+	if (freeIdx != -1) {
+		vm_address_t freeUserspace = ((uint64_t)free_lvl2 & ~L1_BLOCK_MASK) + (freeIdx * L2_BLOCK_SIZE);
+		if (vm_allocate(mach_task_self(), &freeUserspace, 0x4000, VM_FLAGS_FIXED) == 0) {
+			*(volatile uint8_t *)freeUserspace;
+		}
+	}*/
+
+	// Bump reference count of our allocated page table
+	physwrite16_via_krw(pinfo_pa, 0x1337);
+
+	// Deallocate address range (our allocated page table will stay because we bumped it's reference count)
+	free(free_lvl2);
+
+	// Remove our allocated page table from it's original location (leak it)
+	physwrite64_via_krw(tte_lvl2, 0);
+
+	// Ensure there is at least one entry in page table
+	// Attempts to prevent "pte is empty" panic
+	// Sometimes weird prefetches happen so this has to be a valid physical page to ensure those don't panic
+	// Disabled for now cause it causes super weird issues
+	//physwrite64(allocatedPT, kconstant(physBase) | PERM_TO_PTE(PERM_KRW_URW) | PTE_NON_GLOBAL | PTE_OUTER_SHAREABLE | PTE_LEVEL3_ENTRY);
+
+	// Reference count of new page table must be 0!
+	// original ref count is 1 because the table holds one PTE
+	// Our new PTEs are not part of the pmap layer though so refcount needs to be 0
+	physwrite16_via_krw(pinfo_pa, 0);
+
+	// After we leaked the page table, the ledger still thinks it belongs to our process
+	// We need to remove it from there aswell so that the process doesn't get jetsam killed
+	// (This ended up more complicated than I thought, so I just disabled jetsam in launchd)
+	//uint64_t ledger = kread_ptr(pmap + koffsetof(pmap, ledger));
+	//uint64_t ledger_pa = kvtophys(ledger);
+	//int page_table_ledger = physread32(ledger_pa + koffsetof(_task_ledger_indices, page_table));
+	//physwrite32(ledger_pa + koffsetof(_task_ledger_indices, page_table), page_table_ledger - 1);
+
+	return allocatedPT;
+}
+
+uint64_t pmap_self(void)
+{
+	uint64_t proc = proc_of_pid(getpid());
+    uint64_t p_proc_ro = kread64(proc + off_p_proc_ro);
+    uint64_t pr_task = kread64(p_proc_ro + off_p_ro_pr_task);
+	uint64_t vmMap = kreadptr(pr_task + off_task_map);
+	
+	return vmMap;
 }
 
 #define atop(x) ((vm_address_t)(x) >> vm_kernel_page_shift)

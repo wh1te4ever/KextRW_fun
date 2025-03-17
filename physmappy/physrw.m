@@ -92,3 +92,13 @@ int physwrite16_via_krw(uint64_t pa, uint16_t v)
 {
 	return physwritebuf_via_krw(pa, &v, sizeof(v));
 }
+
+int physwrite32_via_krw(uint64_t pa, uint32_t v)
+{
+	return physwritebuf_via_krw(pa, &v, sizeof(v));
+}
+
+int physwrite64_via_krw(uint64_t pa, uint64_t v)
+{
+	return physwritebuf_via_krw(pa, &v, sizeof(v));
+}
