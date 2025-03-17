@@ -74,9 +74,9 @@ void offsets_init(void) {
         off_pmap_ttep = 0x8;
         off_pmap_type = 0xAA;
 
-        off_pt_desc_pmap = 0x10;
+        off_pt_desc_pmap = 0x10;    //ptd_deallocate
         off_pt_desc_va = 0x18;
-        off_pt_desc_ptd_info = off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t)); 
+        off_pt_desc_ptd_info = 0x38;//off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t)); //xref: ptd_info_init (also can be func)
 
         symbols = ksymbols_avm1_24d81;
     }

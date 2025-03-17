@@ -102,4 +102,8 @@
 #define ARM_4K_TT_L3_SHIFT          12
 #define ARM_4K_TT_L3_INDEX_MASK     0x00000000001ff000ULL
 
+#define ARM_TTE_TABLE_APSHIFT       61
+#define ARM_TTE_TABLE_AP_USER_NA    0x1ULL
+#define ARM_TTE_TABLE_AP(x)         ((x) << ARM_TTE_TABLE_APSHIFT) /* access protection */
+
 #endif

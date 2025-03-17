@@ -105,7 +105,7 @@ int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size
 		printf("leafLevel: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", leafLevel, uaL2Cur, ttep, errno);
 		uint64_t level2Table = vtophys_lvl(ttep, uaL2Cur, &leafLevel, NULL);
         printf("level2Table: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", level2Table, uaL2Cur, ttep, errno);
-		sleep(1);
+		// sleep(1);
 		// return -3;
 		if (!level2Table) return -2;
 		physwritebuf_via_krw(level2Table, tableToWrite, vm_real_kernel_page_size);
@@ -204,8 +204,13 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 					}
 				}
 				uint64_t newTable = pmap_alloc_page_table(pmap, pt_va);
+                printf("leafLevel: 0x%llx, newTable: 0x%llx\n", leafLevel, newTable);
 				if (newTable) {
-					physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE);
+                    if(leafLevel == PMAP_TT_L1_LEVEL)
+                        physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE);
+                        // physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE | ARM_TTE_TABLE_AP(ARM_TTE_TABLE_AP_USER_NA));
+                    else if(leafLevel == PMAP_TT_L2_LEVEL)
+                        physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE);
 				}
 				else {
 					return -2;
@@ -228,8 +233,10 @@ uint64_t pmap_alloc_page_table(uint64_t pmap, uint64_t va)
 
 	uint64_t pvh = pai_to_pvh(pa_index(tt_p));
 	uint64_t ptdp = pvh_ptd(pvh);
+    // printf("pmap_alloc_page_table ptdp: 0x%llx\n", ptdp);
 
 	uint64_t ptdp_pa = kvtophys(ptdp);
+    // printf("pmap_alloc_page_table ptdp_pa: 0x%llx\n", ptdp_pa);
 
 	// At this point the allocated page table is associated
 	// to the pmap of this process alongside the address it was allocated on
@@ -255,9 +262,9 @@ uint64_t alloc_page_table_unassigned(void)
 	uint64_t pmap = pmap_self();
 	uint64_t ttep = kread64(pmap + off_pmap_ttep);
 
-	printf("alloc_page_table_unassigned pmap: 0x%llx, ttep: 0x%llx\n", pmap, ttep);
+	// printf("alloc_page_table_unassigned pmap: 0x%llx, ttep: 0x%llx\n", pmap, ttep);
 
-	sleep(1);
+	// sleep(1);
 
 	void *free_lvl2 = NULL;
 	uint64_t tte_lvl2 = 0;
@@ -282,16 +289,24 @@ uint64_t alloc_page_table_unassigned(void)
 
 		uint64_t pvh = pai_to_pvh(pa_index(allocatedPT));
 		// printf("pvh: 0x%llx\n", pvh);
+        // khexdump(pvh, 0x100); //0x80effdf1e7ab1a83
 		// sleep(1);
 		uint64_t ptdp = pvh_ptd(pvh);
 		// printf("ptdp: 0x%llx\n", ptdp);
 		// sleep(1);
+        // khexdump(ptdp, 0x100);
+        // printf("off_pt_desc_ptd_info = 0x%x\n", off_pt_desc_ptd_info);
 		uint64_t pinfo = kread64(ptdp + off_pt_desc_ptd_info);
+        
 		// printf("alloc_page_table_unassigned pinfo: 0x%llx\n", pinfo);
 		// sleep(1);
 		pinfo_pa = kvtophys(pinfo);
+        printf("pinfo_pa: 0x%llx\n", pinfo_pa);
+        if(pinfo_pa == 0) exit(1);
+        // sleep(1);
 
 		uint16_t refCount = physread16_via_krw(pinfo_pa);
+        printf("refCount: 0x%llx\n", refCount);
 		if (refCount != 1) {
 			// Something is off, retry
 			free(free_lvl2);
@@ -370,15 +385,19 @@ uint64_t pmap_self(void)
 #define atop(x) ((vm_address_t)(x) >> vm_kernel_page_shift)
 uint64_t pa_index(uint64_t pa)
 {
+    // printf("kread64(ksym(KSYMBOL_vm_first_phys)): 0x%llx\n", kread64(ksym(KSYMBOL_vm_first_phys)));
 	return atop(pa - kread64(ksym(KSYMBOL_vm_first_phys)));
 }
 
 uint64_t pai_to_pvh(uint64_t pai)
 {
+    // khexdump(ksym(KSYMBOL_pv_head_table), 0x100);
 	return kread64(ksym(KSYMBOL_pv_head_table)) + (pai * 8);
 }
 
 uint64_t pvh_ptd(uint64_t pvh)
 {
-	return ((kread64(pvh) & PVH_LIST_MASK) | PVH_HIGH_FLAGS);
+    uint64_t tmp = kreadptr(pvh);
+    // printf("tmp: 0x%llx, tmp2: 0x%llx\n", tmp, kread64(pvh));
+	return ((kreadptr(pvh) & PVH_LIST_MASK) | PVH_HIGH_FLAGS);
 }
