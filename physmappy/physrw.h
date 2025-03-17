@@ -13,3 +13,6 @@ int physwrite8_via_krw(uint64_t pa, uint8_t v);
 int physwrite16_via_krw(uint64_t pa, uint16_t v);
 int physwrite32_via_krw(uint64_t pa, uint32_t v);
 int physwrite64_via_krw(uint64_t pa, uint64_t v);
+
+uint64_t kread64_via_prw(uint64_t where);
+void kwrite64_via_prw(uint64_t where, uint64_t what);

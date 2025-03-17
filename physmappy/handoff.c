@@ -45,7 +45,7 @@ int physrw_handoff(pid_t pid)
 	return ret;
 }
 
-#define USE_KCALL 0
+#define USE_KCALL 1
 int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size)
 {
 	uint64_t ttep = kread64(pmap + off_pmap_ttep);
@@ -102,9 +102,9 @@ int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size
 
 		// Replace table with the entries we generated
 		uint64_t leafLevel = PMAP_TT_L2_LEVEL;
-		printf("leafLevel: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", leafLevel, uaL2Cur, ttep, errno);
+		// printf("leafLevel: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", leafLevel, uaL2Cur, ttep, errno);
 		uint64_t level2Table = vtophys_lvl(ttep, uaL2Cur, &leafLevel, NULL);
-        printf("level2Table: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", level2Table, uaL2Cur, ttep, errno);
+        // printf("level2Table: 0x%llx, uaL2Cur: 0x%llx, ttep: 0x%llx, errno = %d\n", level2Table, uaL2Cur, ttep, errno);
 		// sleep(1);
 		// return -3;
 		if (!level2Table) return -2;
@@ -152,22 +152,25 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 			// And then running pmap_remove on the entire area while nested is true
 			for (uint64_t l2Off = 0; l2Off < unmappedSize; l2Off += L2_BLOCK_SIZE) {
 				kern_return_t kr = kfunc_pmap_enter_options_addr(pmap, FAKE_PHYSPAGE_TO_MAP, unmappedStart + l2Off);
+                printf("kfunc_pmap_enter_options_addr kr: 0x%llx\n", kr);
 				if (kr != KERN_SUCCESS) {
 					return -7;
 				}
 			}
 
 			// Set type to nested
+            printf("kread8 pmap + off_pmap_type: 0x%x\n", kread8(pmap + off_pmap_type));
 			physwrite8_via_krw(kvtophys(pmap + off_pmap_type), 3);
 
 			printf("pmap_remove...?\n");
-			sleep(1);
+			// sleep(1);
 
 			// Remove mapping (table will stay cause nested is set)
+            printf("pmap: 0x%llx, unmappedStart: 0x%llx, unmappedSize:0x%llx\n", pmap, unmappedStart, unmappedSize);
 			pmap_remove(pmap, unmappedStart, unmappedStart + unmappedSize);
 
-			printf("pmap_remove... done\n");
-			sleep(1);
+			printf("pmap_remove... done\n"); 
+			// sleep(1);
 
 			// Change type back
 			physwrite8_via_krw(kvtophys(pmap + off_pmap_type), 0);
@@ -204,7 +207,7 @@ int pmap_expand_range(uint64_t pmap, uint64_t vaStart, uint64_t size)
 					}
 				}
 				uint64_t newTable = pmap_alloc_page_table(pmap, pt_va);
-                printf("leafLevel: 0x%llx, newTable: 0x%llx\n", leafLevel, newTable);
+                printf("pt: 0x%llx, leafLevel: 0x%llx, newTable: 0x%llx\n", pt, leafLevel, newTable);
 				if (newTable) {
                     if(leafLevel == PMAP_TT_L1_LEVEL)
                         physwrite64_via_krw(pt, newTable | ARM_TTE_VALID | ARM_TTE_TYPE_TABLE);
@@ -254,7 +257,22 @@ uint64_t pmap_alloc_page_table(uint64_t pmap, uint64_t va)
 
 void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end)
 {
-	kfunc_pmap_remove_options(pmap, start, end);
+	// kfunc_pmap_remove_options(pmap, start, end);
+    uint64_t remove_count = 0;
+    if (!pmap) {
+        return;
+    }
+    uint64_t va = start;
+    while (va < end) {
+        uint64_t l;
+        l = ((va + L2_BLOCK_SIZE) & ~L2_BLOCK_MASK);
+        if (l > end) {
+            l = end;
+        }
+        remove_count = kfunc_pmap_remove_options(pmap, va, l);
+        // printf("remove_count: 0x%llx, pmap: 0x%llx, va: 0x%llx, l: 0x%llx\n", remove_count, pmap, va, l);
+        va = remove_count;
+    }
 }
 
 uint64_t alloc_page_table_unassigned(void)
@@ -301,12 +319,12 @@ uint64_t alloc_page_table_unassigned(void)
 		// printf("alloc_page_table_unassigned pinfo: 0x%llx\n", pinfo);
 		// sleep(1);
 		pinfo_pa = kvtophys(pinfo);
-        printf("pinfo_pa: 0x%llx\n", pinfo_pa);
-        if(pinfo_pa == 0) exit(1);
+        // printf("pinfo_pa: 0x%llx\n", pinfo_pa);
+        // if(pinfo_pa == 0) exit(1);
         // sleep(1);
 
 		uint16_t refCount = physread16_via_krw(pinfo_pa);
-        printf("refCount: 0x%llx\n", refCount);
+        // printf("refCount: 0x%llx\n", refCount);
 		if (refCount != 1) {
 			// Something is off, retry
 			free(free_lvl2);
@@ -353,7 +371,7 @@ uint64_t alloc_page_table_unassigned(void)
 	// Attempts to prevent "pte is empty" panic
 	// Sometimes weird prefetches happen so this has to be a valid physical page to ensure those don't panic
 	// Disabled for now cause it causes super weird issues
-	//physwrite64(allocatedPT, kconstant(physBase) | PERM_TO_PTE(PERM_KRW_URW) | PTE_NON_GLOBAL | PTE_OUTER_SHAREABLE | PTE_LEVEL3_ENTRY);
+	// physwrite64_via_krw(allocatedPT, kread64(KSYMBOL_gPhysBase) | PERM_TO_PTE(PERM_KRW_URW) | PTE_NON_GLOBAL | PTE_OUTER_SHAREABLE | PTE_LEVEL3_ENTRY);
 
 	// Reference count of new page table must be 0!
 	// original ref count is 1 because the table holds one PTE

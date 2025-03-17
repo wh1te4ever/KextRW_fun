@@ -70,6 +70,12 @@ kwritebuf(uint64_t kaddr, const void *buf, size_t sz) {
     return IOConnectCallScalarMethod(gClient, 1, in, 3, NULL, NULL);
 }
 
+uint8_t kread8(uint64_t where) {
+    uint8_t out;
+    kreadbuf(where, &out, sizeof(uint8_t));
+    return out;
+}
+
 uint16_t kread16(uint64_t where) {
     uint16_t out;
     kreadbuf(where, &out, sizeof(uint16_t));

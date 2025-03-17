@@ -6,6 +6,7 @@
 #include "kutils.h"
 #include "translation.h"
 #include "handoff.h"
+#include "physrw.h"
 
 int main(void) {
     offsets_init();
@@ -40,6 +41,13 @@ int main(void) {
 
     kr = physrw_handoff(getpid());
     printf("[*] physrw_handoff kr = %lld\n", kr);
+    if(kr != 0) {
+        kextrw_deinit();
+        exit(1);
+    }
+
+    printf("[*] kread64_via_prw(gKernelBase) = 0x%llx\n", kread64_via_prw(gKernelBase));
+
     printf("[*] done\n");
 
     while(1) {};
