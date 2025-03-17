@@ -45,7 +45,7 @@ int physrw_handoff(pid_t pid)
 	return ret;
 }
 
-#define USE_KCALL 1
+#define USE_KCALL 0
 int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size)
 {
 	uint64_t ttep = kread64(pmap + off_pmap_ttep);
@@ -274,22 +274,21 @@ uint64_t alloc_page_table_unassigned(void)
 
 		// Find the newly allocated page table
 		uint64_t lvl = PMAP_TT_L2_LEVEL;
-		printf("HUH, free_lvl2 = 0x%llx\n", (uint64_t)free_lvl2);
-		sleep(1);
-		// allocatedPT = vtophys_lvl(ttep, (uint64_t)free_lvl2, &lvl, &tte_lvl2);
-		allocatedPT = kfunc_pmap_find_pa(pmap, (uint64_t)free_lvl2);
-		printf("allocatedPT: 0x%llx\n", allocatedPT);
-		sleep(1);
+		// printf("HUH, free_lvl2 = 0x%llx\n", (uint64_t)free_lvl2);
+		// sleep(1);
+		allocatedPT = vtophys_lvl(ttep, (uint64_t)free_lvl2, &lvl, &tte_lvl2);
+		// printf("allocatedPT: 0x%llx\n", allocatedPT);
+		// sleep(1);
 
 		uint64_t pvh = pai_to_pvh(pa_index(allocatedPT));
-		printf("pvh: 0x%llx\n", pvh);
-		sleep(1);
+		// printf("pvh: 0x%llx\n", pvh);
+		// sleep(1);
 		uint64_t ptdp = pvh_ptd(pvh);
-		printf("ptdp: 0x%llx\n", ptdp);
-		sleep(1);
+		// printf("ptdp: 0x%llx\n", ptdp);
+		// sleep(1);
 		uint64_t pinfo = kread64(ptdp + off_pt_desc_ptd_info);
-		printf("alloc_page_table_unassigned pinfo: 0x%llx\n", pinfo);
-		sleep(1);
+		// printf("alloc_page_table_unassigned pinfo: 0x%llx\n", pinfo);
+		// sleep(1);
 		pinfo_pa = kvtophys(pinfo);
 
 		uint16_t refCount = physread16_via_krw(pinfo_pa);
