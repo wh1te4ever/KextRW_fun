@@ -121,7 +121,7 @@ int pmap_map_in(uint64_t pmap, uint64_t uaStart, uint64_t paStart, uint64_t size
 		uint16_t pinfo_refCount = kread16(ptdp + off_pt_desc_ptd_info);
         printf("pinfo_refCount = 0x%hx\n", pinfo_refCount);
 
-        kwrite16(ptdp + off_pt_desc_ptd_info, 0); 
+        kwrite16(ptdp + off_pt_desc_ptd_info, 0);  
 #endif
 	}
 
@@ -257,22 +257,22 @@ uint64_t pmap_alloc_page_table(uint64_t pmap, uint64_t va)
 
 void pmap_remove(uint64_t pmap, uint64_t start, uint64_t end)
 {
-	// kfunc_pmap_remove_options(pmap, start, end);
-    uint64_t remove_count = 0;
-    if (!pmap) {
-        return;
-    }
-    uint64_t va = start;
-    while (va < end) {
-        uint64_t l;
-        l = ((va + L2_BLOCK_SIZE) & ~L2_BLOCK_MASK);
-        if (l > end) {
-            l = end;
-        }
-        remove_count = kfunc_pmap_remove_options(pmap, va, l);
-        // printf("remove_count: 0x%llx, pmap: 0x%llx, va: 0x%llx, l: 0x%llx\n", remove_count, pmap, va, l);
-        va = remove_count;
-    }
+	kfunc_pmap_remove_options(pmap, start, end);
+    // uint64_t remove_count = 0;
+    // if (!pmap) {
+    //     return;
+    // }
+    // uint64_t va = start;
+    // while (va < end) {
+    //     uint64_t l;
+    //     l = ((va + L2_BLOCK_SIZE) & ~L2_BLOCK_MASK);
+    //     if (l > end) {
+    //         l = end;
+    //     }
+    //     remove_count = kfunc_pmap_remove_options(pmap, va, l);
+    //     // printf("remove_count: 0x%llx, pmap: 0x%llx, va: 0x%llx, l: 0x%llx\n", remove_count, pmap, va, l);
+    //     va = remove_count;
+    // }
 }
 
 uint64_t alloc_page_table_unassigned(void)

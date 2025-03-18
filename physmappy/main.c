@@ -24,10 +24,16 @@ int main(void) {
     printf("[*] gKernelBase = 0x%llx\n", gKernelBase);
     printf("[*] gKernelSlide = 0x%llx\n", gKernelSlide);
 
-    uint64_t kr = kcall10(ksym(KSYMBOL_RET_1024), (uint64_t []){ }, 0);
-    printf("[*] kcall KSYMBOL_RET_1024 kr = %lld\n", kr);
+    uint64_t kr = 0;
 
-#if 0
+#define TEST__KCALL_10 0
+#if TEST__KCALL_10
+    kr = kcall10(ksym(KSYMBOL_RET_1024), (uint64_t []){ }, 0);
+    printf("[*] kcall KSYMBOL_RET_1024 kr = %lld\n", kr);
+#endif
+
+#define TEST__KVTOPHYS_PHYSTOKV 0
+#if TEST_KVTOPHYS_PHYSTOKV
     uint64_t kr2 = kfunc_kvtophys(gKernelBase);
     printf("[*] kr2 kfunc_kvtophys(gKernelBase) = 0x%llx\n", kr2);
     printf("[*] kvtophys(gKernelBase) = 0x%llx\n", kvtophys(gKernelBase));
@@ -46,11 +52,11 @@ int main(void) {
         exit(1);
     }
 
-    printf("[*] kread64_via_prw(gKernelBase) = 0x%llx\n", kread64_via_prw(gKernelBase));
+    // printf("[*] kread64_via_prw(gKernelBase) = 0x%llx\n", kread64_via_prw(gKernelBase));
 
     printf("[*] done\n");
 
-    while(1) {};
+    // while(1) {};
  
     kextrw_deinit();
 

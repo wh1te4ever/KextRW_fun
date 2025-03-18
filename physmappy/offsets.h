@@ -1,7 +1,13 @@
 #include <stdint.h>
 
 #define AVM1_24D81_KVERSION "Darwin Kernel Version 24.3.0: Thu Jan  2 20:16:37 PST 2025; root:xnu-11215.81.4~3/RELEASE_ARM64_VMAPPLE"
+#define AVM1_22D68_KVERSION "Darwin Kernel Version 22.3.0: Mon Jan 30 20:37:48 PST 2023; root:xnu-8792.81.3~2/RELEASE_ARM64_VMAPPLE"
 #define VM_KERNEL_LINK_ADDR 0xFFFFFE0007004000ULL
+
+enum kmajor {
+  KVERSION_22,
+  KVERSION_24,
+};
 
 enum ksymbol {
   KSYMBOL_KERNPROC,

@@ -40,6 +40,7 @@ int get_kernel_base(void)
 {
     uint64_t kernelPage = 0;
     kextrw_get_reset_vector(gClient, &kernelPage);
+    printf("kernelPage: 0x%llx\n", kernelPage);
     if (!kernelPage) return 0;
 
     uint64_t kernelBase = 0;
