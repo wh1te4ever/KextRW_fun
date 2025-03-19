@@ -33,7 +33,7 @@ int main(void) {
 #endif
 
 #define TEST__KVTOPHYS_PHYSTOKV 0
-#if TEST_KVTOPHYS_PHYSTOKV
+#if TEST__KVTOPHYS_PHYSTOKV
     uint64_t kr2 = kfunc_kvtophys(gKernelBase);
     printf("[*] kr2 kfunc_kvtophys(gKernelBase) = 0x%llx\n", kr2);
     printf("[*] kvtophys(gKernelBase) = 0x%llx\n", kvtophys(gKernelBase));
@@ -45,18 +45,18 @@ int main(void) {
     printf("[*] kr3 phystokv(kr2) = 0x%llx\n", kr3);
 #endif
 
-    kr = physrw_handoff(getpid());
-    printf("[*] physrw_handoff kr = %lld\n", kr);
-    if(kr != 0) {
-        kextrw_deinit();
-        exit(1);
-    }
+    kr = handoffPPLPrimitives(getpid());
+    printf("[*] handoffPPLPrimitives kr = %lld\n", kr);
+    // if(kr != 0) {
+    //     kextrw_deinit();
+    //     exit(1);
+    // }
 
-    // printf("[*] kread64_via_prw(gKernelBase) = 0x%llx\n", kread64_via_prw(gKernelBase));
+    printf("[*] kread64_via_prw(gKernelBase) = 0x%llx\n", kread64_via_prw(gKernelBase));
 
     printf("[*] done\n");
 
-    // while(1) {};
+    while(1) {};
  
     kextrw_deinit();
 

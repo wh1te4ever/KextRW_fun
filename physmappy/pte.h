@@ -1,6 +1,3 @@
-#ifndef PTE_H
-#define PTE_H
-
 #define PTE_NON_GLOBAL      (1 << 11)
 #define PTE_VALID           (1 << 10) // Access flag
 #define PTE_OUTER_SHAREABLE (2 << 8)
@@ -70,7 +67,7 @@
 #define ARM_16K_TT_L1_SIZE          0x0000001000000000ull
 #define ARM_16K_TT_L1_OFFMASK       0x0000000fffffffffull
 #define ARM_16K_TT_L1_SHIFT         36
-#define ARM_16K_TT_L1_INDEX_MASK    0x00007ff000000000ULL
+#define ARM_16K_TT_L1_INDEX_MASK    0x0000007000000000ull
 
 #define ARM_16K_TT_L2_SIZE          0x0000000002000000ull
 #define ARM_16K_TT_L2_OFFMASK       0x0000000001ffffffull
@@ -81,29 +78,3 @@
 #define ARM_16K_TT_L3_OFFMASK       0x0000000000003fffull
 #define ARM_16K_TT_L3_SHIFT         14
 #define ARM_16K_TT_L3_INDEX_MASK    0x0000000001ffc000ull
-
-#define ARM_4K_TT_L0_SIZE           0x0000008000000000ULL
-#define ARM_4K_TT_L0_OFFMASK        0x0000007fffffffffULL
-#define ARM_4K_TT_L0_SHIFT          39
-#define ARM_4K_TT_L0_INDEX_MASK     0x0000ff8000000000ULL
-
-#define ARM_4K_TT_L1_SIZE           0x0000000040000000ULL
-#define ARM_4K_TT_L1_OFFMASK        0x000000003fffffffULL
-#define ARM_4K_TT_L1_SHIFT          30
-#define ARM_4K_TT_L1_INDEX_MASK     0x0000003fc0000000ULL
-
-#define ARM_4K_TT_L2_SIZE           0x0000000000200000ULL
-#define ARM_4K_TT_L2_OFFMASK        0x00000000001fffffULL
-#define ARM_4K_TT_L2_SHIFT          21
-#define ARM_4K_TT_L2_INDEX_MASK     0x000000003fe00000ULL
-
-#define ARM_4K_TT_L3_SIZE           0x0000000000001000ULL
-#define ARM_4K_TT_L3_OFFMASK        0x0000000000000fffULL
-#define ARM_4K_TT_L3_SHIFT          12
-#define ARM_4K_TT_L3_INDEX_MASK     0x00000000001ff000ULL
-
-#define ARM_TTE_TABLE_APSHIFT       61
-#define ARM_TTE_TABLE_AP_USER_NA    0x1ULL
-#define ARM_TTE_TABLE_AP(x)         ((x) << ARM_TTE_TABLE_APSHIFT) /* access protection */
-
-#endif

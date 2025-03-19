@@ -47,12 +47,31 @@ uint64_t ksymbols_avm1_22d68[] = {
     0xFFFFFE0007CE9D38, // KSYMBOL_pmap_find_pa
 };
 
+uint64_t ksymbols_avm1_22c65[] = {
+    0xFFFFFE00075F1260, // KSYMBOL_KERNPROC v
+    0xFFFFFE0007CE94B4, //0xFFFFFE0008EE70CC, // KSYMBOL_RET_1024 v
+    0xFFFFFE0007CE6DC8, // KSYMBOL_phystokv v
+    0xFFFFFE0007CD3768, // KSYMBOL_kvtophys v
+    0xFFFFFE00074E1C70, // KSYMBOL_ptov_table v
+    0xFFFFFE000759EEB0, // KSYMBOL_gPhysBase    v
+    0xFFFFFE000759EEB8, // KSYMBOL_gPhysSize    v
+    0xFFFFFE000759B4F8, // KSYMBOL_gVirtBase    v
+    0xFFFFFE000756C010, // KSYMBOL_cpu_ttep v
+    0xFFFFFE0007CD13D8, // KSYMBOL_pmap_enter_options_addr  v
+    0xFFFFFE0007CD71F0, // KSYMBOL_pmap_remove_options  v
+    0xFFFFFE000756C150, // KSYMBOL_vm_first_phys    v
+    0xFFFFFE00074E1908, // KSYMBOL_pv_head_table    v
+    0xFFFFFE0007CDA2E8, // KSYMBOL_pmap_find_pa v
+};
+
 uint64_t ksym(enum ksymbol sym)
 {
     if(kversion_major == KVERSION_24)
         kaslr_slide = gKernelBase - VM_KERNEL_LINK_ADDR - 0x8000;
-    if(kversion_major == KVERSION_22)
+    if(kversion_major == KVERSION_22_3)
         kaslr_slide = gKernelBase - VM_KERNEL_LINK_ADDR - 0xa80000;
+    if(kversion_major == KVERSION_22_2)
+        kaslr_slide = gKernelBase - VM_KERNEL_LINK_ADDR - 0xa70000;
 
     return symbols[sym] + kaslr_slide;
 }
@@ -76,7 +95,8 @@ void offsets_init(void) {
     sysctlbyname("kern.version", &kern_version, &size, NULL, 0);
 
     if (strcmp(kern_version, AVM1_24D81_KVERSION) != 0 &&
-        strcmp(kern_version, AVM1_22D68_KVERSION) != 0) {
+        strcmp(kern_version, AVM1_22D68_KVERSION) != 0 &&
+        strcmp(kern_version, AVM1_22C65_KVERSION) != 0) {
         printf("[-] Your Kernel is NOT supported.\n");
         exit(EXIT_FAILURE);
     }
@@ -124,6 +144,29 @@ void offsets_init(void) {
         off_pt_desc_ptd_info = 0x38;//off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t)); //xref: ptd_info_init (also can be func)
 
         symbols = ksymbols_avm1_22d68;
-        kversion_major = KVERSION_22;
+        kversion_major = KVERSION_22_3;
+    }
+
+    if (strcmp(kern_version, AVM1_22C65_KVERSION) == 0) {
+        off_p_pid = 0x60;
+        off_p_list_le_prev = 0x8;
+        off_p_proc_ro = 0x18;
+
+        off_p_ro_pr_proc = 0;
+        off_p_ro_pr_task = 0x8;
+
+        off_task_map = 0x28;
+
+        off_vm_map_pmap = 0x40;
+
+        off_pmap_ttep = 0x8;
+        off_pmap_type = 0xAA;   //Xref str aPmapSetNestedI - "pmap_set_nested_internal"
+
+        off_pt_desc_pmap = 0x10;    //ptd_deallocate
+        off_pt_desc_va = 0x18;
+        off_pt_desc_ptd_info = 0x38;//off_pt_desc_pmap + (/*kconstant(PT_INDEX_MAX)*/ 4 * sizeof(uint64_t)); //xref: ptd_info_init (also can be func)
+
+        symbols = ksymbols_avm1_22c65;
+        kversion_major = KVERSION_22_2;
     }
 }

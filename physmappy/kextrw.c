@@ -106,6 +106,11 @@ uint64_t kreadptr(uint64_t where)
     return xpaci(kread64(where));
 }
 
+void kwrite8(uint64_t where, uint8_t what) {
+    uint8_t _what = what;
+    kwritebuf(where, &_what, sizeof(uint8_t));
+}
+
 void kwrite16(uint64_t where, uint16_t what) {
     uint16_t _what = what;
     kwritebuf(where, &_what, sizeof(uint16_t));
