@@ -28,3 +28,19 @@ void kmemcpy(uint64_t dest, uint64_t src, uint32_t length);
 void khexdump(uint64_t addr, size_t size);
 
 uint64_t kcall10(uint64_t fn, uint64_t *args, uint32_t argsCnt);
+
+
+uint8_t physread8(uint64_t addr);
+uint16_t physread16(uint64_t addr);
+uint32_t physread32(uint64_t addr);
+uint64_t physread64(uint64_t addr);
+int physreadbuf(uint64_t addr, void *buf, size_t len);
+
+void physwrite8(uint64_t addr, uint8_t val);
+void physwrite16(uint64_t addr, uint16_t val);
+void physwrite32(uint64_t addr, uint32_t val);
+void physwrite64(uint64_t addr, uint64_t val);
+int physwritebuf(uint64_t addr, void *buf, size_t len);
+
+uint64_t kvtophys(uint64_t va);
+uint64_t phystokv(uint64_t pa);

@@ -192,3 +192,103 @@ uint64_t kcall10(uint64_t fn, uint64_t *args, uint32_t argsCnt)
     if (ret != KERN_SUCCESS) printf("WARNING: kcall failed with error %d\n", ret);
     return rv;
 }
+
+/* Physical read/write */
+static inline kern_return_t kextrw_physread(io_connect_t client, uint64_t from, void *to, uint64_t len, uint8_t align)
+{
+    uint64_t in[] = { from, (uint64_t)to, len, align };
+    return IOConnectCallScalarMethod(client, 2, in, 4, NULL, NULL);
+}
+
+static inline kern_return_t kextrw_physwrite(io_connect_t client, void *from, uint64_t to, uint64_t len, uint8_t align)
+{
+    uint64_t in[] = { (uint64_t)from, to, len, align };
+    return IOConnectCallScalarMethod(client, 3, in, 4, NULL, NULL);
+}
+
+uint8_t physread8(uint64_t addr)
+{
+    uint8_t val = 0;
+    kextrw_physread(gClient, addr, &val, sizeof(val), 1);
+    return val;
+}
+
+uint16_t physread16(uint64_t addr)
+{
+    uint16_t val = 0;
+    kextrw_physread(gClient, addr, &val, sizeof(val), 2);
+    return val;
+}
+
+uint32_t physread32(uint64_t addr)
+{
+    uint32_t val = 0;
+    kextrw_physread(gClient, addr, &val, sizeof(val), 4);
+    return val;
+}
+
+uint64_t physread64(uint64_t addr)
+{
+    uint64_t val = 0;
+    kextrw_physread(gClient, addr, &val, sizeof(val), 8);
+    return val;
+}
+
+int physreadbuf(uint64_t addr, void *buf, size_t len)
+{
+    return kextrw_physread(gClient, addr, buf, len, 1);
+}
+
+void physwrite8(uint64_t addr, uint8_t val)
+{
+    kextrw_physwrite(gClient, &val, addr, sizeof(val), 1);
+}
+
+void physwrite16(uint64_t addr, uint16_t val)
+{
+    kextrw_physwrite(gClient, &val, addr, sizeof(val), 2);
+}
+
+void physwrite32(uint64_t addr, uint32_t val)
+{
+    kextrw_physwrite(gClient, &val, addr, sizeof(val), 4);
+}
+
+void physwrite64(uint64_t addr, uint64_t val)
+{
+    kextrw_physwrite(gClient, &val, addr, sizeof(val), 8);
+}
+
+int physwritebuf(uint64_t addr, void *buf, size_t len)
+{
+    return kextrw_physwrite(gClient, buf, addr, len, 1);
+}
+
+/* Translation */
+static inline kern_return_t kextrw_kvtophys(io_connect_t client, uint64_t va, uint64_t *out)
+{
+    uint64_t in = va;
+    uint32_t outCnt = 1;
+    return IOConnectCallScalarMethod(client, 5, &in, 1, out, &outCnt);
+}
+
+static inline kern_return_t kextrw_phystokv(io_connect_t client, uint64_t pa, uint64_t *out)
+{
+    uint64_t in = pa;
+    uint32_t outCnt = 1;
+    return IOConnectCallScalarMethod(client, 6, &in, 1, out, &outCnt);
+}
+
+uint64_t kvtophys(uint64_t va)
+{
+    uint64_t pa = 0;
+    kextrw_kvtophys(gClient, va, &pa);
+    return pa;
+}
+
+uint64_t phystokv(uint64_t pa)
+{
+    uint64_t va = 0;
+    kextrw_phystokv(gClient, pa, &va);
+    return va;
+}
