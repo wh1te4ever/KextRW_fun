@@ -29,8 +29,14 @@ int main(void) {
 
 #define TEST__KCALL_10 1
 #if TEST__KCALL_10
-    kr = kcall10(ksym(KSYMBOL_RET_1024), (uint64_t []){ }, 0);
-    printf("[*] kcall KSYMBOL_RET_1024 kr = %lld\n", kr);
+    // kr = kcall10(ksym(KSYMBOL_RET_1024), (uint64_t []){ }, 0);
+    // printf("[*] kcall KSYMBOL_RET_1024 kr = %lld\n", kr);
+
+    uint64_t ptr = kfunc_kvtophys(gKernelBase);
+    printf("ptr: 0x%llx\n", ptr);
+
+    uint64_t vptr = phystokv(ptr);
+    printf("vptr: 0x%llx\n", vptr);
 #endif
     // khexdump(ksym(KSYMBOL_RET_1024), 0x50);
 
